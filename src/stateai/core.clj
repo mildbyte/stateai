@@ -4,14 +4,16 @@
   '(:wander :feed :sleep))
 (def all-attributes
   '(:hunger :health :fatigue))
+(def initial-attributes
+  {:hunger 100
+   :health 100
+   :fatigue 100})
 
 (defrecord Agent [state attributes state-coeffs])
 
 (defn make-random-agent []
   (Agent. :wander
-          {:hunger 100
-           :health 100
-           :fatigue 100}
+          initial-attributes
           (into {} (for [st all-states, nst all-states, attr all-attributes]
                      [[st nst attr] (dec (* (rand) 2))]))))
 
@@ -58,3 +60,23 @@
 (def initial-population (take 100 (repeatedly make-random-agent)))
 
 (defn survivor-times [agents] (map #(first (survives-time % 20000)) agents))
+
+(def imperfect-population
+  (take 100
+        (filter (fn [agent] (let [[time ag] (survives-time agent 2000)]
+                             (and (< time 2000)
+                                  (> time 150))))
+                (repeatedly make-random-agent))))
+
+(defn combine-agent-coeffs [coeff1 coeff2]
+  (into {} (for [st all-states, nst all-states, attr all-attributes]
+             [[st nst attr] (/ (+ (coeff1 [st nst attr])
+                                  (coeff2 [st nst attr]))
+                               2)])))
+
+(defn mate-agents [agent1 agent2]
+  (Agent. :wander
+          initial-attributes
+          (combine-agent-coeffs (:state-coeffs agent1)
+                                (:state-coeffs agent2))))
+
